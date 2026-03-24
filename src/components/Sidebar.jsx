@@ -1,5 +1,20 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, PieChart, Clock, User, LogOut } from "lucide-react";
+import Lottie from "lottie-react";
+import { 
+  LayoutDashboard, 
+  PieChart, 
+  Clock, 
+  User, 
+  LogOut, 
+  TrendingUp, 
+  Wallet,
+  Zap,
+  Repeat,
+  Sparkles
+} from "lucide-react";
+import { AnimatedText } from "./ui/animated-text";
+
+const LOGO_LOTTIE_URL = "https://lottie.host/81b28d6d-6761-4c6e-8b1b-648b268571bd/9P5f9jDIn9.json";
 
 export default function Sidebar({ setToken }) {
   const navigate = useNavigate();
@@ -8,7 +23,6 @@ export default function Sidebar({ setToken }) {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
 
-    // notify App.jsx
     window.dispatchEvent(
       new CustomEvent("auth:token-changed", { detail: "" })
     );
@@ -19,48 +33,63 @@ export default function Sidebar({ setToken }) {
 
   const links = [
     { name: "Dashboard", path: "/", icon: <LayoutDashboard size={18} /> },
+    { name: "AI Insights", path: "/ai-insights", icon: <Sparkles size={18} className="text-emerald-400" /> },
     { name: "Analytics", path: "/analytics", icon: <PieChart size={18} /> },
-    { name: "History", path: "/history", icon: <Clock size={18} /> },
-    { name: "Profile", path: "/profile", icon: <User size={18} /> },
+    { name: "Month Summary", path: "/month-summary", icon: <Calendar size={18} /> },
   ];
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-72 bg-gradient-to-b from-[#0b0f16] to-[#0a0c11] border-r border-[#0f1014] p-6 flex flex-col">
-      <div className="mb-8">
-        <div className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
-          MoneyFlow
+    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-zinc-950 border-r border-zinc-800 p-6 flex flex-col z-50">
+      <div className="mb-10 flex items-center gap-2 px-2">
+        <div className="w-12 h-12">
+          <Lottie 
+            animationData={null} 
+            path={LOGO_LOTTIE_URL}
+            loop={true} 
+          />
         </div>
-        <div className="text-sm text-gray-400 mt-1">Personal Finance</div>
+        <AnimatedText 
+          text="MoneyFlow AI" 
+          textClassName="text-xl font-bold tracking-tight text-white"
+          className="items-start gap-0 -ml-2"
+          underlineHeight="h-[2px]"
+          underlineOffset="-bottom-1"
+          underlineGradient="from-emerald-500 to-emerald-900"
+          replay={true}
+        />
       </div>
 
-      <nav className="flex-1 space-y-2">
+      <nav className="flex-1 space-y-1">
+        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-4 mb-4">
+          Main Menu
+        </p>
         {links.map((l) => (
           <NavLink
             key={l.name}
             to={l.path}
             end
             className={({ isActive }) =>
-              `relative flex items-center gap-3 px-4 py-3 rounded-xl transition 
-               ${isActive ? "bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg" : "text-gray-300 hover:bg-white/2 hover:text-purple-200"}`
+              `group flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200
+               ${isActive 
+                 ? "bg-zinc-900 text-emerald-400 border border-zinc-800 shadow-sm" 
+                 : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50"}`
             }
           >
-            <div className="w-6 h-6 flex items-center justify-center">{l.icon}</div>
-            <span className="font-medium">{l.name}</span>
-            <span
-              className="absolute left-0 top-1/2 -translate-y-1/2 h-10 w-1 rounded-r"
-              style={{ background: "linear-gradient(180deg,#8b5cf6,#ec4899)" }}
-            />
+            <div className={`transition-colors duration-200`}>
+              {l.icon}
+            </div>
+            <span className="text-sm font-medium">{l.name}</span>
           </NavLink>
         ))}
       </nav>
 
-      <div>
+      <div className="pt-6 border-t border-zinc-900">
         <button
           onClick={logout}
-          className="mt-6 w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white transition"
+          className="group w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-500/5 transition-all duration-200"
         >
           <LogOut size={18} />
-          Logout
+          <span className="text-sm font-medium">Log out</span>
         </button>
       </div>
     </aside>

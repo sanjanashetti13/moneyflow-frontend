@@ -5,12 +5,16 @@ import Dashboard from "./components/Dashboard";
 import Analytics from "./components/Analytics";
 import Profile from "./components/Profile";
 import History from "./components/History";
+import Sidebar from "./components/Sidebar"; // Added
+import AIInsightsPage from "./components/AI/AIInsightsPage"; // Added
+import MonthSummary from "./components/MonthSummary";
 
 import ProtectedLayout from "./components/ProtectedLayout";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import GoogleCallback from "./components/GoogleCallback";
 import SetupUsername from "./components/SetupUsername";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 export default function App() {
   // App-wide token state
@@ -37,47 +41,52 @@ export default function App() {
   const isAuthenticated = !!token;
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<Login setToken={setToken} />} />
-        <Route path="/register" element={<Register />} />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<Login setToken={setToken} />} />
+          <Route path="/register" element={<Register />} />
 
-        {/* Google callback receives setToken to sync login */}
-        <Route
-          path="/google-callback"
-          element={<GoogleCallback setToken={setToken} />}
-        />
+          {/* Google callback receives setToken to sync login */}
+          <Route
+            path="/google-callback"
+            element={<GoogleCallback setToken={setToken} />}
+          />
 
-        {/* Username setup: must NOT be inside ProtectedLayout */}
-        <Route
-          path="/setup-username"
-          element={<SetupUsername setToken={setToken} />}
-        />
+          {/* Username setup: must NOT be inside ProtectedLayout */}
+          <Route
+            path="/setup-username"
+            element={<SetupUsername setToken={setToken} />}
+          />
 
-        {/* Protected routes */}
-        <Route
-          path="/"
-          element={
-            isAuthenticated ? (
-              <ProtectedLayout token={token} setToken={setToken} />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        >
-          <Route index element={<Dashboard />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="history" element={<History />} />
-        </Route>
+          {/* Protected routes */}
+          <Route
+            path="/"
+            element={
+              isAuthenticated ? (
+                <ProtectedLayout token={token} setToken={setToken} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="history" element={<History />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="ai-insights" element={<AIInsightsPage />} />
+            <Route path="month-summary" element={<MonthSummary />} />
+          </Route>
 
-        {/* Fallback */}
-        <Route
-          path="*"
-          element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}
-        />
-      </Routes>
-    </BrowserRouter>
+          {/* Fallback */}
+          <Route
+            path="*"
+            element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}
+          />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

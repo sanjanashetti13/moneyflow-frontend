@@ -1,20 +1,11 @@
-import { Search, LogOut } from "lucide-react";
-import { useLocation } from "react-router-dom";
-import { useSearch } from "../context/SearchContext";
+import NotificationBell from "./ui/NotificationBell";
+import { User } from "lucide-react";
+import { useLocation, Link } from "react-router-dom";
+import { AnimatedText } from "./ui/animated-text";
 
 export default function Navbar({ setToken }) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const location = useLocation();
-  const { term, setTerm } = useSearch();
-
-  const titles = {
-    "/": "Dashboard",
-    "/analytics": "Analytics",
-    "/profile": "Profile",
-    "/history": "History",
-  };
-
-  const title = titles[location.pathname] || "";
 
   const logout = () => {
     localStorage.clear();
@@ -23,50 +14,46 @@ export default function Navbar({ setToken }) {
   };
 
   return (
-    <header className="fixed right-0 top-0 z-40 w-[calc(100%-18rem)] h-16 bg-gradient-to-b from-[#060612]/60 to-[#0b0d12]/50 backdrop-blur border-b border-[#11121a] flex items-center justify-between px-6">
-      <div>
-        <h2 className="text-2xl font-extrabold tracking-tight text-purple-300/95">{title}</h2>
+    <header className="fixed left-0 top-0 z-40 w-full h-20 bg-transparent flex items-center justify-between px-10">
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
+        <AnimatedText 
+          text="MoneyFlow AI" 
+          textClassName="text-white font-black text-xl tracking-tighter hover:scale-105 transition-transform cursor-default"
+          underlineHeight="h-[2px]"
+          underlineOffset="-bottom-1"
+          underlineGradient="from-emerald-500 to-emerald-900"
+          replay={true}
+        />
       </div>
 
-      <div className="flex items-center gap-5">
-        {/* Search bar */}
-        <div className="hidden md:flex items-center bg-[#0f1319] border border-[#1a1b22] rounded-lg px-3 py-2">
-          <Search size={16} className="text-gray-400" />
-          <input
-            value={term}
-            onChange={(e) => setTerm(e.target.value)}
-            className="ml-3 bg-transparent outline-none text-sm text-gray-300 placeholder-gray-500 w-56"
-            placeholder="Search transactions, notes..."
-          />
-        </div>
+      <div className="flex items-center gap-8">
+        {/* Placeholder for left-side spacing compatibility if needed, but flex-between handles it */}
+        <div className="w-10"></div>
+      </div>
 
-        {/* USER + LOGOUT */}
-        <div className="flex items-center gap-3 pl-3 border-l border-[#11121a]">
-          {user.picture ? (
-            <img
-              src={user.picture}
-              alt="avatar"
-              className="w-9 h-9 rounded-full object-cover border-2 border-purple-600"
-            />
-          ) : (
-            <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center text-sm font-semibold">
-              {user.username ? user.username[0].toUpperCase() : "U"}
-            </div>
-          )}
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 border-l border-zinc-800/30 pl-6">
+          <NotificationBell />
+          
+            <Link to="/profile" className="flex items-center gap-3 cursor-pointer hover:bg-zinc-900/50 p-1 rounded-xl transition-all">
+              <div className="flex flex-col items-end leading-tight">
+                <span className="text-xs font-semibold text-zinc-200">{user.username || "User"}</span>
+                <span className="text-[10px] text-zinc-500 font-medium">Free Plan</span>
+              </div>
 
-          <div className="hidden md:flex flex-col leading-tight">
-            <span className="text-sm font-medium text-gray-200">{user.username || "User"}</span>
-            <span className="text-xs text-gray-400">{user.email}</span>
+              {user.picture ? (
+                <img
+                  src={user.picture}
+                  alt="avatar"
+                  className="w-8 h-8 rounded-full object-cover ring-2 ring-zinc-800 ring-offset-2 ring-offset-zinc-950"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-400">
+                  {user.username ? user.username[0].toUpperCase() : "U"}
+                </div>
+              )}
+            </Link>
           </div>
-
-          <button
-            onClick={logout}
-            title="Logout"
-            className="ml-4 p-2 rounded-md hover:bg-red-600/10 transition"
-          >
-            <LogOut size={18} className="text-red-400" />
-          </button>
-        </div>
       </div>
     </header>
   );

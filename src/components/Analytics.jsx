@@ -13,11 +13,13 @@ import {
   LineChart,
   Line,
   Legend,
+  CartesianGrid
 } from "recharts";
 import { format } from "date-fns";
 import { useOutletContext } from "react-router-dom";
+import { TrendingUp, BarChart3, PieChart as PieChartIcon, Activity } from "lucide-react";
 
-const COLORS = ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#ec4899"];
+const COLORS = ["#10b981", "#3b82f6", "#6366f1", "#f59e0b", "#71717a"];
 
 export default function Analytics() {
   const { token } = useOutletContext();
@@ -29,13 +31,10 @@ export default function Analytics() {
   useEffect(() => {
     if (!token) return;
     let mounted = true;
-
     const load = async () => {
       try {
         const [expRes, rateRes] = await Promise.all([
-          axios.get(`${API_URL}/api/expenses`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+          axios.get(`${API_URL}/api/expenses`, { headers: { Authorization: `Bearer ${token}` } }),
           axios.get(`${API_URL}/api/currency`),
         ]);
         if (!mounted) return;
@@ -45,53 +44,42 @@ export default function Analytics() {
         console.error("Analytics load error:", err);
       }
     };
-
     load();
     return () => (mounted = false);
   }, [token, API_URL]);
 
-  // Convert backend timestamp → UTC date (no timezone shifts)
   const toUTC = (dateStr) => {
     const d = new Date(dateStr);
     return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
   };
 
-  // Convert currency
-  const convert = useCallback(
-    (amount, from) => {
-      if (!amount) return 0;
-      if (from === baseCurrency) return Number(amount);
-      if (!rates[from] || !rates[baseCurrency]) return Number(amount);
-      return (Number(amount) / rates[from]) * rates[baseCurrency];
-    },
-    [rates]
-  );
+  const convert = useCallback((amount, from) => {
+    if (!amount) return 0;
+    if (from === baseCurrency) return Number(amount);
+    if (!rates[from] || !rates[baseCurrency]) return Number(amount);
+    return (Number(amount) / rates[from]) * rates[baseCurrency];
+  }, [rates]);
 
-  // ✔ FIXED — Last 7 days
   const last7 = useMemo(() => {
     const now = new Date();
     const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-
     const result = [];
-
     for (let i = 6; i >= 0; i--) {
       const day = new Date(todayUTC);
       day.setUTCDate(day.getUTCDate() - i);
+      const dayStr = day.toISOString().slice(0, 10);
 
       const total = expenses
         .filter((e) => {
-          const d = toUTC(e.date);
-          return d.toISOString().slice(0, 10) === day.toISOString().slice(0, 10);
+          const eDate = new Date(e.date).toISOString().slice(0, 10);
+          return eDate === dayStr;
         })
         .reduce((sum, e) => sum + convert(e.amount, e.currency), 0);
-
       result.push({ day: format(day, "EEE"), total });
     }
-
     return result;
   }, [expenses, convert]);
 
-  // Category Breakdown
   const categoryData = useMemo(() => {
     const map = new Map();
     expenses.forEach((e) => {
@@ -99,18 +87,12 @@ export default function Analytics() {
       const amount = convert(e.amount, e.currency);
       map.set(key, (map.get(key) || 0) + amount);
     });
-    return [...map].map(([name, value]) => ({ name, value }));
+    return [...map].map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
   }, [expenses, convert]);
 
-  const topCategories = useMemo(() => {
-    return [...categoryData].sort((a, b) => b.value - a.value).slice(0, 5);
-  }, [categoryData]);
-
-  // ✔ FIXED — Last 6 months
   const months = useMemo(() => {
     const now = new Date();
     const arr = [];
-
     for (let i = 5; i >= 0; i--) {
       const ref = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
       const total = expenses
@@ -119,106 +101,121 @@ export default function Analytics() {
           return d.getUTCFullYear() === ref.getUTCFullYear() && d.getUTCMonth() === ref.getUTCMonth();
         })
         .reduce((sum, e) => sum + convert(e.amount, e.currency), 0);
-
       arr.push({ month: format(ref, "MMM"), total });
     }
-
     return arr;
   }, [expenses, convert]);
 
-  const grandTotal = useMemo(
-    () => expenses.reduce((sum, e) => sum + convert(e.amount, e.currency), 0),
-    [expenses, convert]
-  );
+  const grandTotal = useMemo(() => expenses.reduce((sum, e) => sum + convert(e.amount, e.currency), 0), [expenses, convert]);
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-zinc-950 border border-zinc-800 p-3 rounded-xl shadow-2xl">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">{label}</p>
+          <p className="text-sm font-bold text-emerald-400 font-sans">₹{payload[0].value.toFixed(2)}</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
-    <div className="space-y-8">
-      {/* LAST 7 DAYS */}
-      <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-1 bg-[#0f1419] p-6 rounded-2xl border border-[#1a1b22]">
-          <h3 className="text-lg font-semibold text-purple-300 mb-2">Last 7 Days</h3>
-          <div style={{ width: "100%", height: 220 }}>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      {/* Top Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 glass-card p-8">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+              <TrendingUp size={16} className="text-emerald-500" />
+              Weekly Expenditure
+            </h3>
+            <div className="text-right">
+              <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded">LIVE SYNC</span>
+            </div>
+          </div>
+          <div style={{ width: "100%", height: 300 }}>
             <ResponsiveContainer>
               <LineChart data={last7}>
-                <XAxis dataKey="day" stroke="#7b8088" />
-                <YAxis stroke="#7b8088" />
-                <Tooltip formatter={(value) => `₹${value}`} />
-                <Line type="monotone" dataKey="total" stroke="#8b5cf6" strokeWidth={3} dot />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#18181b" />
+                <XAxis dataKey="day" stroke="#52525b" fontSize={10} fontWeight={600} tickLine={false} axisLine={false} dy={10} />
+                <YAxis stroke="#52525b" fontSize={10} fontWeight={600} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#27272a', strokeWidth: 1 }} />
+                <Line type="monotone" dataKey="total" stroke="#10b981" strokeWidth={3} dot={{ fill: '#10b981', r: 4, strokeWidth: 0 }} activeDot={{ r: 6, stroke: '#09090b', strokeWidth: 2 }} animationDuration={1500} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* SUMMARY */}
-        <div className="w-96 bg-[#0f1419] p-6 rounded-2xl border border-[#1a1b22]">
-          <h3 className="text-lg font-semibold text-purple-300 mb-2">Summary</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-300">Total (all time)</span>
-              <span className="font-semibold text-green-400">₹{grandTotal.toFixed(2)}</span>
+        <div className="glass-card p-8 flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2 mb-8">
+              <Activity size={16} className="text-indigo-400" />
+              Overview
+            </h3>
+            <div className="space-y-6">
+              <div>
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Total Volume</p>
+                <p className="text-3xl font-bold text-white mt-1">₹{grandTotal.toLocaleString('en-IN')}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Total Entries</p>
+                <p className="text-3xl font-bold text-white mt-1">{expenses.length}</p>
+              </div>
             </div>
-
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-300">Tracked expenses</span>
-              <span className="font-semibold text-gray-200">{expenses.length}</span>
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-300 mt-3">Top categories</p>
-              <ul className="mt-2 space-y-2">
-                {topCategories.map((c, i) => (
-                  <li key={i} className="flex justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <span
-                        style={{
-                          width: 10,
-                          height: 10,
-                          background: COLORS[i % COLORS.length],
-                          borderRadius: 3,
-                          display: "inline-block",
-                        }}
-                      />
-                      {c.name}
-                    </div>
-                    <span>₹{c.value.toFixed(2)}</span>
-                  </li>
-                ))}
-              </ul>
+          </div>
+          
+          <div className="mt-8 pt-8 border-t border-zinc-800/50">
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">Top Spending</p>
+            <div className="space-y-3">
+              {categoryData.slice(0, 3).map((item, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: COLORS[i] }}></div>
+                    <span className="text-xs font-semibold text-zinc-300">{item.name}</span>
+                  </div>
+                  <span className="text-xs font-bold text-white">₹{item.value.toFixed(0)}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* CATEGORY + MONTHS */}
+      {/* Bottom Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* PIE */}
-        <div className="bg-[#0f1419] p-6 rounded-2xl border border-[#1a1b22]">
-          <h3 className="text-lg font-semibold text-purple-300 mb-4">Category Breakdown</h3>
-          <div style={{ width: "100%", height: 300 }}>
+        <div className="glass-card p-8">
+          <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2 mb-8">
+            <PieChartIcon size={16} className="text-emerald-500" />
+            Category Allocation
+          </h3>
+          <div style={{ width: "100%", height: 320 }}>
             <ResponsiveContainer>
               <PieChart>
-                <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={4} stroke="none">
                   {categoryData.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} className="hover:opacity-80 transition-opacity" />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v) => `₹${v}`} />
-                <Legend />
+                <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* BAR */}
-        <div className="bg-[#0f1419] p-6 rounded-2xl border border-[#1a1b22]">
-          <h3 className="text-lg font-semibold text-purple-300 mb-4">Last 6 Months</h3>
-          <div style={{ width: "100%", height: 300 }}>
+        <div className="glass-card p-8">
+          <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2 mb-8">
+            <BarChart3 size={16} className="text-indigo-400" />
+            Monthly Growth
+          </h3>
+          <div style={{ width: "100%", height: 320 }}>
             <ResponsiveContainer>
               <BarChart data={months}>
-                <XAxis dataKey="month" stroke="#7b8088" />
-                <YAxis stroke="#7b8088" />
-                <Tooltip formatter={(v) => `₹${v}`} />
-                <Bar dataKey="total" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#18181b" />
+                <XAxis dataKey="month" stroke="#52525b" fontSize={10} fontWeight={600} tickLine={false} axisLine={false} dy={10} />
+                <YAxis stroke="#52525b" fontSize={10} fontWeight={600} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: '#18181b' }} />
+                <Bar dataKey="total" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
